@@ -10,12 +10,12 @@ import math
 from typing import Optional, List
 
 class LoRALayer():
-    def __init__(
+    def __init__(  # 下面的参数写法可以表示变量的期望类型，但是如果传入的参数不是期望的类型也不会报错，也就是相当于注释
         self, 
-        r: int, 
-        lora_alpha: int, 
+        r: int,  # 低秩矩阵的秩
+        lora_alpha: int,   # 论文中的缩放因子α
         lora_dropout: float,
-        merge_weights: bool,
+        merge_weights: bool,  # 指示是否在训练和推理之间合并权重，也就是是否要将AB加到W上
     ):
         self.r = r
         self.lora_alpha = lora_alpha
@@ -23,17 +23,17 @@ class LoRALayer():
         if lora_dropout > 0.:
             self.lora_dropout = nn.Dropout(p=lora_dropout)
         else:
-            self.lora_dropout = lambda x: x
+            self.lora_dropout = lambda x: x  # 这个匿名函数表示输入x返回x，也就是此时Dropout层不执行任何操作
         # Mark the weight as unmerged
-        self.merged = False
+        self.merged = False  # 表示是否已经将AB加到W中
         self.merge_weights = merge_weights
 
 
-class Embedding(nn.Embedding, LoRALayer):
+class Embedding(nn.Embedding, LoRALayer):  # 注意这里的继承关系
     # LoRA implemented in a dense layer
     def __init__(
         self,
-        num_embeddings: int,
+        num_embeddings: int,  # 也就是vocab_size
         embedding_dim: int,
         r: int = 0,
         lora_alpha: int = 1,
