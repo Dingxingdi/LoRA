@@ -32,7 +32,7 @@ There are several directories in this repo:
  ```
  sudo apt-get update
  sudo apt-get -y install git jq virtualenv
- git clone https://github.com/microsoft/LoRA.git; cd LoRA
+ git clone https://github.com/microsoft/LoRA.git; cd LoRA  // 如果要运行本地的代码文件，那么就将这句命令换成docker对本地文件的挂载即可
  virtualenv -p `which python3` ./venv
  . ./venv/bin/activate
  cd ./examples/NLG
