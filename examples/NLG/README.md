@@ -25,7 +25,7 @@ There are several directories in this repo:
 
  1. You can start with the following docker image: `nvcr.io/nvidia/pytorch:20.03-py3` on a GPU-capable machine, but any generic PyTorch image should work.
  ```
- docker run -it nvcr.io/nvidia/pytorch:20.03-py3
+ docker run -it --gpus all nvcr.io/nvidia/pytorch:20.03-py3
  ```
 
  2. Clone the repo and install dependencies in a virtual environment (remove sudo if running in docker container):
@@ -37,6 +37,7 @@ There are several directories in this repo:
  . ./venv/bin/activate
  cd ./examples/NLG
  pip install -r requirement.txt
+ pip install loralib
  bash download_pretrained_checkpoints.sh
  bash create_datasets.sh
  cd ./eval
