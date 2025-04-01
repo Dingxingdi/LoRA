@@ -36,6 +36,7 @@ There are several directories in this repo:
  virtualenv -p `which python3` ./venv
  . ./venv/bin/activate
  cd ./examples/NLG
+ pip install pillow
  pip install -r requirement.txt
  pip install loralib
  bash download_pretrained_checkpoints.sh
