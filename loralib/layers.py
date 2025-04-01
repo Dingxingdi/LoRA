@@ -43,10 +43,15 @@ class Embedding(nn.Embedding, LoRALayer):  # 注意这里的继承关系
         nn.Embedding.__init__(self, num_embeddings, embedding_dim, **kwargs)
         LoRALayer.__init__(self, r=r, lora_alpha=lora_alpha, lora_dropout=0,
                            merge_weights=merge_weights)
+        # 调用父类的__init__方法
         # Actual trainable parameters
         if r > 0:
             self.lora_A = nn.Parameter(self.weight.new_zeros((r, num_embeddings)))
             self.lora_B = nn.Parameter(self.weight.new_zeros((embedding_dim, r)))
+            # self.weight是nn.Embedding中的weight参数
+            # new_zeros 是一个 PyTorch 张量的方法
+            # 用于创建一个与调用张量（这里是 self.weight）具有相同数据类型和设备（如 CPU 或 GPU）的新张量，
+            # 并将其所有元素初始化为 0
             self.scaling = self.lora_alpha / self.r
             # Freezing the pre-trained weight matrix
             self.weight.requires_grad = False
@@ -54,36 +59,39 @@ class Embedding(nn.Embedding, LoRALayer):  # 注意这里的继承关系
 
     def reset_parameters(self):
         nn.Embedding.reset_parameters(self)
-        if hasattr(self, 'lora_A'):
+        # 调用 PyTorch 中 nn.Embedding 类的默认参数初始化方法，
+        # 对嵌入层的权重矩阵 self.weight 进行均匀分布初始化
+        if hasattr(self, 'lora_A'): # 防止r=0的情况（也就是不想给嵌入层加入LoRA）
             # initialize A the same way as the default for nn.Linear and B to zero
             nn.init.zeros_(self.lora_A)
             nn.init.normal_(self.lora_B)
 
     def train(self, mode: bool = True):
         nn.Embedding.train(self, mode)
-        if mode:
+        # 就是设置训练和评估模式，mode为True表示训练模式，False表示评估模式
+        # 只不过注意，这里进行了overridden
+        if mode: # 训练模式的时候就要将AB从W中分离出来，单独更新AB
             if self.merge_weights and self.merged:
-                # Make sure that the weights are not merged
                 if self.r > 0:
                     self.weight.data -= (self.lora_B @ self.lora_A).transpose(0, 1) * self.scaling
                 self.merged = False
-        else:
+        else: # 评估模式的时候就要将AB加到W中，然后再进行前向传播
             if self.merge_weights and not self.merged:
-                # Merge the weights and mark it
                 if self.r > 0:
                     self.weight.data += (self.lora_B @ self.lora_A).transpose(0, 1) * self.scaling
                 self.merged = True
         
     def forward(self, x: torch.Tensor):
-        if self.r > 0 and not self.merged:
+        if self.r > 0 and not self.merged: # 训练模式
             result = nn.Embedding.forward(self, x)
             after_A = F.embedding(
                 x, self.lora_A.transpose(0, 1), self.padding_idx, self.max_norm,
                 self.norm_type, self.scale_grad_by_freq, self.sparse
             )
             result += (after_A @ self.lora_B.transpose(0, 1)) * self.scaling
+            # 这里是先做transpose再做矩阵乘法
             return result
-        else:
+        else: # 评估模式
             return nn.Embedding.forward(self, x)
             
 
@@ -96,7 +104,11 @@ class Linear(nn.Linear, LoRALayer):
         r: int = 0, 
         lora_alpha: int = 1, 
         lora_dropout: float = 0.,
-        fan_in_fan_out: bool = False, # Set this to True if the layer to replace stores weight like (fan_in, fan_out)
+        fan_in_fan_out: bool = False, 
+        # 如果 fan_in_fan_out = True，表示权重矩阵的存储方式是 (fan_in, fan_out)，
+        # 即输入特征数在第一个维度，输出特征数在第二个维度
+        # 如果 fan_in_fan_out = False，表示权重矩阵的存储方式是 (fan_out, fan_in)，
+        # 即输出特征数在第一个维度，输入特征数在第二个维度
         merge_weights: bool = True,
         **kwargs
     ):
@@ -121,7 +133,7 @@ class Linear(nn.Linear, LoRALayer):
         if hasattr(self, 'lora_A'):
             # initialize B the same way as the default for nn.Linear and A to zero
             # this is different than what is described in the paper but should not affect performance
-            nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
+            nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5)) # 这个初始化方法是nn.Linear的默认初始化方法
             nn.init.zeros_(self.lora_B)
 
     def train(self, mode: bool = True):
@@ -158,10 +170,15 @@ class MergedLinear(nn.Linear, LoRALayer):
         self, 
         in_features: int, 
         out_features: int, 
+        # out_features=in_features*3,因为为了并行
+        # 将查询，键和值的转换矩阵全部拼在了一起（按照第一维度）
+        # 所以总矩阵的大小是(in_fetures, out_features*3)
         r: int = 0, 
         lora_alpha: int = 1, 
         lora_dropout: float = 0.,
         enable_lora: List[bool] = [False],
+        # enable_lora是一个布尔值列表，表示多头注意力中查询，键和值的转换矩阵是否启用LoRA
+        # 例如，如果enable_lora = [True, False, True]，则表示查询和值的转换矩阵启用LoRA，键的转换矩阵不启用
         fan_in_fan_out: bool = False,
         merge_weights: bool = True,
         **kwargs
@@ -170,16 +187,18 @@ class MergedLinear(nn.Linear, LoRALayer):
         LoRALayer.__init__(self, r=r, lora_alpha=lora_alpha, lora_dropout=lora_dropout,
                            merge_weights=merge_weights)
         assert out_features % len(enable_lora) == 0, \
-            'The length of enable_lora must divide out_features'
+            'The length of enable_lora must divide out_features' 
+        # 由于每个转换矩阵的第一维度大小都是一样的，所以out_features必须是enable_lora的长度的整数倍
         self.enable_lora = enable_lora
         self.fan_in_fan_out = fan_in_fan_out
         # Actual trainable parameters
-        if r > 0 and any(enable_lora):
+        if r > 0 and any(enable_lora): # any函数是判断enable_lora中是否有True的值
             self.lora_A = nn.Parameter(
                 self.weight.new_zeros((r * sum(enable_lora), in_features)))
             self.lora_B = nn.Parameter(
                 self.weight.new_zeros((out_features // len(enable_lora) * sum(enable_lora), r))
-            ) # weights for Conv1D with groups=sum(enable_lora)
+            ) # 这里之所以要这么奇怪地设置A和B
+            # 是为了下面的并行化计算
             self.scaling = self.lora_alpha / self.r
             # Freezing the pre-trained weight matrix
             self.weight.requires_grad = False
@@ -200,12 +219,13 @@ class MergedLinear(nn.Linear, LoRALayer):
             nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
             nn.init.zeros_(self.lora_B)
 
-    def zero_pad(self, x):
+    def zero_pad(self, x): # 由于不是查询，键和值的转换矩阵都要加上LoRA，所以有了要将delta_w的一些位置填0
+        # 填0的位置就是不加入LoRA的地方，此时就可以进行并行化运算
         result = x.new_zeros((len(self.lora_ind), *x.shape[1:]))
-        result[self.lora_ind] = x
+        result[self.lora_ind] = x # 注意布尔索引不会减少维度数
         return result
 
-    def merge_AB(self):
+    def merge_AB(self): # 这里的操作就是在并行化运算AB，会发现刚好与卷积的操作是一样的
         def T(w):
             return w.transpose(0, 1) if self.fan_in_fan_out else w
         delta_w = F.conv1d(
@@ -215,7 +235,7 @@ class MergedLinear(nn.Linear, LoRALayer):
         ).squeeze(0)
         return T(self.zero_pad(delta_w))
 
-    def train(self, mode: bool = True):
+    def train(self, mode: bool = True): # 设置train模式
         def T(w):
             return w.transpose(0, 1) if self.fan_in_fan_out else w
         nn.Linear.train(self, mode)
@@ -232,18 +252,21 @@ class MergedLinear(nn.Linear, LoRALayer):
                     self.weight.data += self.merge_AB() * self.scaling
                 self.merged = True        
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor): # 输入x就是查询，键和值
+        # 由于是自注意力，所以查询，键和值一模一样，可以直接用一个x代替
+        # 这个函数的输出就是多头注意力中，每个头转换之后的查询，键和值
+        # 也就是W_q*q,W_k*k,W_v*v
         def T(w):
             return w.transpose(0, 1) if self.fan_in_fan_out else w
         if self.merged:
             return F.linear(x, T(self.weight), bias=self.bias)
         else:
-            result = F.linear(x, T(self.weight), bias=self.bias)
+            result = F.linear(x, T(self.weight),  bias=self.bias)
             if self.r > 0:
                 result += self.lora_dropout(x) @ T(self.merge_AB().T) * self.scaling
             return result
 
-class ConvLoRA(nn.Module, LoRALayer):
+class ConvLoRA(nn.Module, LoRALayer): # 这个是在卷积层上面使用LoRA，原始论文中这些类并没用
     def __init__(self, conv_module, in_channels, out_channels, kernel_size, r=0, lora_alpha=1, lora_dropout=0., merge_weights=True, **kwargs):
         super(ConvLoRA, self).__init__()
         self.conv = conv_module(in_channels, out_channels, kernel_size, **kwargs)
