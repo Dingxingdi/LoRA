@@ -25,17 +25,27 @@ There are several directories in this repo:
 
  1. You can start with the following docker image: `nvcr.io/nvidia/pytorch:20.03-py3` on a GPU-capable machine, but any generic PyTorch image should work.
  ```
- docker pull nvcr.io/nvidia/pytorch:25.03-py3 // 这里安装最新的NVIDIA镜像即可，见https://catalog.ngc.nvidia.com/orgs/nvidia/containers/pytorch/tags
+ docker pull nvcr.io/nvidia/pytorch:25.03-py3
+ // 这里安装最新的NVIDIA镜像即可，见https://catalog.ngc.nvidia.com/orgs/nvidia/containers/pytorch/tags
+ // 下载的镜像是一个文件，会占用本地的空间；下载之后就可以在这个镜像上运行容器了
  docker run -it --gpus all nvcr.io/nvidia/pytorch:25.03-py3
+ // 这个操作是运行容器；--gpus all可以让容器使用GPU
+ // 这两行命令都在cmd中运行，然后就可以去docker desktop找对应的容器了
  ```
 
  2. Clone the repo and install dependencies in a virtual environment (remove sudo if running in docker container):
  ```
+ // 这些命令可以在cmd中运行，也可以在docker desktop中对应容器的终端运行
  sudo apt-get update
+ // 更新软件包
  sudo apt-get -y install git jq virtualenv
- git clone https://github.com/microsoft/LoRA.git; cd LoRA  // 如果要运行本地的代码文件，那么就将这句命令换成docker对本地文件的挂载即可
+ // 安装必要的库：git用于版本控制，下载和管理代码仓库；jq是一个轻量级的 JSON 处理工具，常用于解析和操作 JSON 数据；virtualenv用于创建 Python 虚拟环境，隔离项目依赖
+ git clone https://github.com/microsoft/LoRA.git; cd LoRA
+ // 如果要运行本地的代码文件，那么就将这句命令换成docker对本地文件的挂载即可
  virtualenv -p `which python3` ./venv
+ // 创建名为venv的虚拟环境
  . ./venv/bin/activate
+ // 激活虚拟环境
  cd ./examples/NLG
  pip install pillow
  pip install -r requirement.txt
