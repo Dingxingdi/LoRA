@@ -35,6 +35,7 @@ There are several directories in this repo:
  git clone https://github.com/microsoft/LoRA.git; cd LoRA
  virtualenv -p `which python3` ./venv
  . ./venv/bin/activate
+ cd ./examples/NLG
  pip install -r requirement.txt
  bash download_pretrained_checkpoints.sh
  bash create_datasets.sh
