@@ -25,7 +25,8 @@ There are several directories in this repo:
 
  1. You can start with the following docker image: `nvcr.io/nvidia/pytorch:20.03-py3` on a GPU-capable machine, but any generic PyTorch image should work.
  ```
- docker run -it --gpus all nvcr.io/nvidia/pytorch:20.03-py3
+ docker pull nvcr.io/nvidia/pytorch:25.03-py3 // 这里安装最新的NVIDIA镜像即可，见https://catalog.ngc.nvidia.com/orgs/nvidia/containers/pytorch/tags
+ docker run -it --gpus all nvcr.io/nvidia/pytorch:25.03-py3
  ```
 
  2. Clone the repo and install dependencies in a virtual environment (remove sudo if running in docker container):
