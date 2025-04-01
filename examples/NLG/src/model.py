@@ -80,7 +80,7 @@ class Conv1D(nn.Module):
         return x
 
 
-class Attention(nn.Module):
+class Attention(nn.Module): # 这里实现的是多头注意力
     def __init__(self, nx, n_ctx, config, scale=False):
         super(Attention, self).__init__()
         n_state = nx  # in Attention: n_state=768 (nx=n_embd)
@@ -105,7 +105,7 @@ class Attention(nn.Module):
         self.config = config
     
     def _attn(self, q, k, v, len_kv=None):
-        w = torch.matmul(q, k)
+        w = torch.matmul(q, k) # 这里实现的是点积注意力
         if self.scale:
             w = w / math.sqrt(v.size(-1))
         nd, ns = w.size(-2), w.size(-1)
@@ -129,7 +129,8 @@ class Attention(nn.Module):
         new_x_shape = x.size()[:-2] + (x.size(-2) * x.size(-1),)
         return x.view(*new_x_shape)  # in Tensorflow implem: fct merge_states
 
-    def split_heads(self, x, k=False):
+    def split_heads(self, x, k=False): # 将输入的最后一维分成多头
+        # x : (batch, seq_length, head_features)
         new_x_shape = x.size()[:-1] + (self.n_head, x.size(-1) // self.n_head)
         x = x.view(*new_x_shape)  # in Tensorflow implem: fct split_states
         if k:
@@ -140,13 +141,14 @@ class Attention(nn.Module):
     def forward(self, x, history=None, layer_past=None, len_past=None):
         hidden_states = x
 
-        x = self.c_attn(x)
+        x = self.c_attn(x) # 由于是自注意力，所以查询，键和值一模一
+        # 所以可以把W_q,W_k,W_v都拼接在一起
         query, key, value = x.split(self.split_size, dim=2)
 
         query = self.split_heads(query)
         key = self.split_heads(key, k=True)
         value = self.split_heads(value)
-
+        # 注意这里的查询，键和值已经经过了转换矩阵了，所以下面直接做点积就好了
         #_input_msk = None
 
         len_kv = None
