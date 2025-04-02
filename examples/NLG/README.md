@@ -66,7 +66,7 @@ There are several directories in this repo:
 ## Replicating Our Result on E2E
 
 1. Train GPT-2 Medium with LoRA (see our paper for hyperparameters for GPT-2 Medium)
-首先我们要先对要运行的文件（gpt2_ft.py）进行修改。具体要进行的修改对照https://pytorch.org/docs/stable/elastic/run.html#module-torch.distributed.run即可。如果使用的是torch.distributed.launch，就按照左边的修改；如果使用的是torchrun，就按照右边的修改
+首先我们要先对要运行的文件（gpt2_ft.py）进行修改。具体要进行的修改对照[这个网页](https://pytorch.org/docs/stable/elastic/run.html#module-torch.distributed.run)即可。如果使用的是torch.distributed.launch，就按照左边的修改；如果使用的是torchrun，就按照右边的修改
 注意下面的参数堆GPU的内存要求很高，本机是不可以的，我实验的时候将所有大参数全部改的很小，然后就可以跑了
 ```
 python -m torch.distributed.launch --nproc_per_node=1 src/gpt2_ft.py \
