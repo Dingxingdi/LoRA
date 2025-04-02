@@ -36,14 +36,18 @@ There are several directories in this repo:
  2. Clone the repo and install dependencies in a virtual environment (remove sudo if running in docker container):
  ```
  // 这些命令可以在cmd中运行，也可以在docker desktop中对应容器的终端运行
+ // 一般来说为了方便，我们在docker desktop中找到对应的容器，然后点击Exec，然后点击Open in external terminal
+ // 这个样子就可以在外部终端中运行命令，同时使用docker desktop对下载的文件进行修改（容器中的Files选项可以修改）
  sudo apt-get update
  // 更新软件包
  sudo apt-get -y install git jq virtualenv
  // 安装必要的库：git用于版本控制，下载和管理代码仓库；jq是一个轻量级的 JSON 处理工具，常用于解析和操作 JSON 数据；virtualenv用于创建 Python 虚拟环境，隔离项目依赖
  git clone https://github.com/microsoft/LoRA.git; cd LoRA
+ // 克隆仓库到容器的文件夹中；cd LoRA表示进入这个目录
  // 如果要运行本地的代码文件，那么就将这句命令换成docker对本地文件的挂载即可
- virtualenv -p `which python3` ./venv
- // 创建名为venv的虚拟环境
+ virtualenv -p $(which python3) ./venv --system-site-packages
+ // 创建名为venv的虚拟环境；最后的--system-site-packages可以让这个虚拟环境访问全局环境的包（全局环境是NVIDIA镜像，所以包含Pytorch）
+ // 注意我们下载的NVIDIA镜像已经包含Pytorch了，所以在下面安装requirement的包的时候就不用再安装torch了
  . ./venv/bin/activate
  // 激活虚拟环境
  cd ./examples/NLG
@@ -62,6 +66,8 @@ There are several directories in this repo:
 ## Replicating Our Result on E2E
 
 1. Train GPT-2 Medium with LoRA (see our paper for hyperparameters for GPT-2 Medium)
+首先我们要先对要运行的文件（gpt2_ft.py）进行修改。具体要进行的修改对照https://pytorch.org/docs/stable/elastic/run.html#module-torch.distributed.run即可。如果使用的是torch.distributed.launch，就按照左边的修改；如果使用的是torchrun，就按照右边的修改
+注意下面的参数堆GPU的内存要求很高，本机是不可以的，我实验的时候将所有大参数全部改的很小，然后就可以跑了
 ```
 python -m torch.distributed.launch --nproc_per_node=1 src/gpt2_ft.py \
     --train_data ./data/e2e/train.jsonl \
