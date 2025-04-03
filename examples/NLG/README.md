@@ -25,6 +25,7 @@ There are several directories in this repo:
 
  1. You can start with the following docker image: `nvcr.io/nvidia/pytorch:20.03-py3` on a GPU-capable machine, but any generic PyTorch image should work.
  ```
+ // 下面的命令要打开docker desktop
  docker pull nvcr.io/nvidia/pytorch:25.03-py3
  // 这里安装最新的NVIDIA镜像即可，见https://catalog.ngc.nvidia.com/orgs/nvidia/containers/pytorch/tags
  // 下载的镜像是一个文件，会占用本地的空间；下载之后就可以在这个镜像上运行容器了
